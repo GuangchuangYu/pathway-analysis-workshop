@@ -1,0 +1,91 @@
+---
+title: "BMB209 SDU 2019 - Pathway Analysis Workshop"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+  pdf_document:
+    toc: true
+---
+
+
+```{r, include=FALSE}
+library(knitr)
+opts_chunk$set(message=FALSE, warning=FALSE, eval=TRUE, echo=TRUE, cache=TRUE)
+library(icon)
+```
+
+## General Information
+
+<https://odinlister.sdu.dk/fagbesk/internkode/BMB209/en>
+
+**_When_: Jan. 2019**
+
+**_Where_: University of Southern Denmark, Odense**  
+
+
+**_Instructor_: Guangchuang Yu**&nbsp;
+[`r fa("envelope")`](mailto:guangchuangyu@gmail.com)
+[`r fa("university")`](http://portal.smu.edu.cn/jcyxy/info/1084/2203.htm)
+[`r fa("twitter")`](https://twitter.com/guangchuangyu)
+[`r fa("github")`](https://github.com/GuangchuangYu/)
+[`r fa("rss")`](https://guangchuangyu.github.io)
+
+<small>Guangchuang Yu, Ph.D. is faculty in the School of Basic Medical Sciences at the Southern Medical University.</small>
+
+## Workshop Description
+
+This workshop gives an overview of commonly used methods for enrichment analysis of gene expression data with regard to functional gene sets and pathways, and introduces pathway analysis using *clusterProfiler*. The *clusterProfiler* package was designed by considering the supports of multiple ontology/pathway annotations, up-to-date gene annotation, multiple organisms, user customized annotation data and comparative analysis. The workshop will provide reproducible examples of pathway analysis, along with visualization and exploration of results.
+
+
+### Pre-requisites
+
++ Basic knowledge of R syntax
++ Familiar with high-throughput gene expression data as obtained with microarray and RNA-seq
++ Familiarity with the concept of differential expression analysis (with e.g. limma, edgeR, DESeq2)
+
+### Workshop Participation
+
+Execution of example code on practice
+
+### R/Bioconductor packages used
+
++ clusterProfiler
++ DOSE
++ dplyr
++ magrittr
++ msigdbr
++ org.Hs.eg.db
+
+
+
+## Over Representation Analysis
+
+Over Representation Analysis (ORA) is a widely used approach to determine whether any terms/pathways annotate a specific list of genes at frequency greater than that would be expected by chance. 
+The _p_-value was calculated using hypergeometric distribution.
+
+
+$p = 1 - \displaystyle\sum_{i = 0}^{k-1}\frac{{M \choose i}{{N-M} \choose {n-i}}} {{N \choose n}}$
+
+In this equation, `N` is the total number of genes in the background distribution,
+`M` is the number of genes within that distribution that are annotated (either directly or indirectly) to the
+term/pathway of interest,
+`n` is the size of the list of genes of interest and `k` is the number of genes within that list which
+are annotated to the term/pathway. The background distribution by default is
+all the genes that have annotation. _P_-values should be adjusted for [multiple comparison](https://en.wikipedia.org/wiki/Multiple_comparisons_problem).
+
+
+## Gene Set Enrichment Analysis
+
+A common approach in analyzing gene expression profiles was identifying differential expressed genes (DEGs) that are deemed interesting. Then analyzing the DEGs using ORA. This approach will find genes where the difference is large, but it will not detect a situation where the difference is small, but evidenced in coordinated way in a set of related genes. Gene Set Enrichment Analysis (GSEA) directly addresses this limitation.
+All genes can be used in GSEA; GSEA aggregates the per gene statistics across genes within a gene set, therefore making it possible to detect situations where all genes in a predefined set change in a small but coordinated way. Since it is likely that many relevant phenotypic differences are manifested by small but consistent changes in a set of genes.
+
+Genes are ranked based on their phenotypes. Given a priori defined set of gene _S_ (e.g., genes shareing the same _GO_ category), the goal of GSEA is to determine whether the members of _S_ are randomly distributed throughout the ranked gene list (_L_) or primarily found at the top or bottom.
+
+There are two key elements of the GSEA method:
+
+* Calculation of an Enrichment Score.
+  + The enrichment score (_ES_) represent the degree to which a set _S_ is over-represented at the top or bottom of the ranked list _L_. The score is calculated by walking down the list _L_, increasing a running-sum statistic when we encounter a gene in _S_ and decreasing when it is not. The magnitude of the increment depends on the gene statistics (e.g., correlation of the gene with phenotype). The _ES_ is the maximum deviation from zero encountered in the random walk; it corresponds to a weighted Kolmogorov-Smirnov-like statistic.
+* Esimation of Significance Level of _ES_.
+  + The _p_-value of the _ES_ is calculated using permutation test. Specifically, we permute the gene labels of the gene list _L_ and recompute the _ES_ of the gene set for the permutated data, which generate a null distribution for the _ES_. The _p_-value of the observed _ES_ is then calculated relative to this null distribution.
+
