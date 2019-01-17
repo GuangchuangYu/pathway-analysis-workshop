@@ -1,0 +1,11 @@
+
+.Rproj.user
+.Rhistory
+.RData
+.Rprofile
+
+*_cache/
+Untitled*
+.DS_Store*
+._*
+.Trashes
