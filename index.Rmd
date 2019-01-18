@@ -64,9 +64,11 @@ Execution of example code on practice
 ### R/Bioconductor packages used
 
 + clusterProfiler
++ cowplot
 + DOSE
 + dplyr
 + enrichplot
++ ggplot2
 + magrittr
 + msigdbr
 + org.Hs.eg.db
@@ -74,7 +76,7 @@ Execution of example code on practice
 Using the following command to install these packages:
 
 ```r
-install.packages(c("BiocManager", "dplyr", "msigdbr"))
+install.packages(c("BiocManager", "cowplot", "dplyr", "ggplot2", "magrittr", "msigdbr"))
 BiocManager::install(c("clusterProfiler", "DOSE", "enrichplot", "org.Hs.eg.db"))
 ```
 
@@ -342,7 +344,7 @@ ego <- enrichGO(gene          = gene,
                 pAdjustMethod = "BH",
                 pvalueCutoff  = 0.01,
                 qvalueCutoff  = 0.05,
-		readable      = TRUE)
+                readable      = TRUE)
 ```
 
 Instead of using whole genome annotation as background, users can specify background by the `universe` parameter. For example, all genes that are actually expressed in an experiment.
@@ -365,6 +367,11 @@ ego2 <- gseGO(geneList     = geneList,
               verbose      = FALSE)
 ```
 
+
+### GO analysis for non-model organisms
+
+Both `enrichGO` and `gseGO` functions require an `OrgDb` object as background annotation. For organisms that don't have `OrgDb` provided by Bioconductor, users can query one (if available) online via `r Biocpkg("AnnotationHub")`. If there is no `OrgDb` available, users can obtain GO annotation from other sources, e.g. from `r Biocpkg("biomaRt")` or [Blast2GO](https://www.blast2go.com/). Then using `enricher` or `GSEA` function to analyze, similar to the examples using wikiPathways and MSigDB. Another solution is to create `OrgDb` by your own using `r Biocpkg("AnnotationForge")` package.
+
 ### Reducing GO redundancy
 
 GO is organized in parent-child structure, thus a parent term can be overlap with a large proportion with all its child terms. This can result in redundant findings. To solve this issue, *clusterProfiler* implement `simplify` method to reduce redundant GO terms from the outputs of `enrichGO` and `gseGO`. The function internally called *GOSemSim* [@yu2010] to calculate semantic similarity among GO terms and remove those highly similar terms by keeping one representative term.
@@ -377,9 +384,6 @@ emapplot(ego)
 emapplot(sego)
 ```
 
-### GO analysis for non-model organisms
-
-Both `enrichGO` and `gseGO` functions require an `OrgDb` object as background annotation. For organisms that don't have `OrgDb` provided by Bioconductor, users can query one (if available) online via `r Biocpkg("AnnotationHub")`. If there is no `OrgDb` available, users can obtain GO annotation from other sources, e.g. from `r Biocpkg("biomaRt")` or [Blast2GO](https://www.blast2go.com/). Then using `enricher` or `GSEA` function to analyze, similar to the examples using wikiPathways and MSigDB. Another solution is to create `OrgDb` by your own using `r Biocpkg("AnnotationForge")` package.
 
 ## KEGG Analysis
 
@@ -521,52 +525,59 @@ pp <- lapply(1:3, function(i) {
     x <- ifelse(es < 0, 0, length(geneList) * .8)
     gsearank(gk, i, gk[i, 2]) + xlab(NULL) +ylab(NULL) +
         annotate("text", x,  es * .5, label = lab, 
-                hjust=0, vjust=0, size = 4)
+                hjust=0, vjust=0, size = 4) + xlim(0, 12500)
 })
 plot_grid(plotlist=pp, ncol=1)
 ```
 
 ## Biological theme comparison
 
+`r Biocpkg("clusterProfiler")` provides `compareCluster` function to automatically calculate enriched functional categories among multiple gene clusters that obtained from different experimental conditions.
 
-## Overview of clusterProfiler
+```{r fig.width=9, fig.height=7}
+data(gcSample)
+sapply(gcSample, length)
+lapply(gcSample, head)
+ck <- compareCluster(geneCluster = gcSample, fun="enrichKEGG")
+head(ck)
+dotplot(ck)
+```
 
-
-### Supported Analysis
-
-+ Over-Representation Analysis
-+ Gene Set Enrichment Analysis
-+ Biological theme comparison
-
-### Supported ontologies/pathways
-
-+ Disease Ontology (via [DOSE](https://www.bioconductor.org/packages/DOSE))
-+ [Network of Cancer Gene](http://ncg.kcl.ac.uk/) (via [DOSE](https://www.bioconductor.org/packages/DOSE))
-+ [DisGeNET](http://www.disgenet.org/web/DisGeNET/menu/home) (via [DOSE](https://www.bioconductor.org/packages/DOSE))
-+ Gene Ontology (supports many species with GO annotation query online via [AnnotationHub](https://bioconductor.org/packages/AnnotationHub/))
-+ KEGG Pathway and Module with latest online data (supports more than 4000 species listed in <http://www.genome.jp/kegg/catalog/org_list.html>)
-+ Reactome Pathway (via [ReactomePA](https://www.bioconductor.org/packages/ReactomePA))
-+ Other Annotations (e.g. EggNOG)
-	* user's annotation
-	* customized ontology
-
-### Visualization
-
-+ barplot
-+ cnetplot
-+ dotplot
-+ emapplot
-+ gseaplot
-+ goplot
-+ upsetplot
+### Formula interface of compareCluster
 
 
+`compareCluster` also supports passing a formula (the code to support formula has been contributed by Giovanni Dall'Olio) of type $Entrez \sim group$ or $Entrez \sim group + othergroup$.
 
-### Citation
+```{r fig.width=12}
+mydf <- data.frame(Entrez=names(geneList), FC=geneList)
+mydf <- mydf[abs(mydf$FC) > 1,]
+mydf$group <- "upregulated"
+mydf$group[mydf$FC < 0] <- "downregulated"
+mydf$othergroup <- "A"
+mydf$othergroup[abs(mydf$FC) > 2] <- "B"
 
-If you use [clusterProfiler](https://www.bioconductor.org/packages/clusterProfiler) in published research, please cite:
+formula_res <- compareCluster(Entrez~group+othergroup, data=mydf, fun="enricher",
+                             TERM2GENE=wpid2gene, TERM2NAME = wpid2name)
+
+head(formula_res)
+dotplot(formula_res, x=~group) + ggplot2::facet_grid(~othergroup)
+```
 
 
-__*G Yu*__, LG Wang, Y Han, QY He. [clusterProfiler: an R package for comparing biological themes among gene clusters](http://dx.doi.org/10.1089/omi.2011.0118. **_OMICS: A Journal of Integrative Biology_** 2012, 16(5):284-287. doi:10.1089/omi.2011.0118
+## Summary
+
+Using ORA, we need to first classify genes as interest or not interest (*e.g.* DE or not DE), which is rather arbitrary, and the independence assumption between genes is unrealistic. However, the simplicity and general applicability of ORA is unmet by other methods. For example, GSEA requires the expression data as input, which is not available from other experimental types. 
+
+There is another strategy, topology-based method, to perform functional analysis. However, network for many species is missing or at least incomplete, restricting the application of this method.
+
+All methods have their own benefits and limitations and no single method is best suited for all applications. 
+
+
+An increasing concern upon the quality of gene annotation has raised an alarm in biomedical research. A previous study [@wadi_impact_2016] reported that about 42% of the tools were outdated by more than five years and functional significance were severely underestimated with only 26% of biological processes or pathways were captured compare to using up-to-date annotation. 
+
+Doing pathway analysis, we need to bear in mind that applying multiple methods can be beneficial, and pay attention to the release date of the background annotation.
+
+`r Biocpkg("clusterProfiler")` provides two most widely used methods, ORA and GSEA, and up-to-date annotation. All species annotated in KEGG database can be analyzed and the data is queried online (most updated). `OrgDb` that released within Bioconductor was updated biannual, and can be queried also online via `r Biocpkg("AnnotationHub")`. In addition, *clusterProfiler* is a general tool and user can provide their own annotation to analyze their data. For instance users can download the latest wikiPathway, MSigDb, GO, *etc*.
+
 
 ## References
