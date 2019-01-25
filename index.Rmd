@@ -35,6 +35,8 @@ Biocpkg <- function (pkg) {
 
 **_Where_: University of Southern Denmark, Odense**  
 
+<https://guangchuangyu.github.io/pathway-analysis-workshop/>
+
 
 **_Instructor_: Guangchuang Yu**&nbsp;
 [`r fa("envelope")`](mailto:guangchuangyu@gmail.com)
@@ -69,6 +71,7 @@ Execution of example code on practice
 + dplyr
 + enrichplot
 + ggplot2
++ GSEABase
 + magrittr
 + msigdbr
 + org.Hs.eg.db
@@ -77,7 +80,7 @@ Using the following command to install these packages:
 
 ```r
 install.packages(c("BiocManager", "cowplot", "dplyr", "ggplot2", "magrittr", "msigdbr"))
-BiocManager::install(c("clusterProfiler", "DOSE", "enrichplot", "org.Hs.eg.db"))
+BiocManager::install(c("clusterProfiler", "DOSE", "enrichplot", "GSEABase", "org.Hs.eg.db"))
 ```
 
 ## Terminology
@@ -356,7 +359,7 @@ head(ego)
 
 Similary, we can run GSEA test using `gseGO` function:
 
-```r
+```{r}
 ego2 <- gseGO(geneList     = geneList,
               OrgDb        = org.Hs.eg.db,
               ont          = "CC",
@@ -430,7 +433,30 @@ The visualization methods were implemented on `r Biocpkg("enrichplot")` package.
 ### Dot plot
 
 ```{r}
-dotplot(ego, showCategory = 10)
+p <- dotplot(ego, showCategory = 10)
+print(p)
+
+library(ggplot2)
+p <- p + scale_color_continuous(low='purple', high='green') 
+print(p)
+p+ aes(shape = GeneRatio > 0.1) + 
+  scale_size(range = c(5, 12), breaks=c(12, 18, 24))
+```
+
+The rich factors indicate the ratio of the number of DEGs mapped to a certain pathway to the total number of genes mapped to this pathway. Greater rich factor means greater intensiveness. 
+
+```{r}
+N <- as.numeric(sub("\\d+/", "", ego[1, "BgRatio"]))
+dotplot(ego, showCategory=15, 
+        x = ~Count/(BgRatio *N)) + 
+  ggplot2::xlab("Rich Factor")
+```
+
+
+```{r  fig.width=10, fig.height=8}
+## dotplot for GSEA result
+dotplot(gk, showCategory=30) + 
+  facet_grid(.~ifelse(NES < 0, 'suppressed', 'activated'))
 ```
 
 ### Gene-Concept Network
@@ -466,7 +492,15 @@ cluster together, making it easy to identify functional module.
 
 The `emapplot` function supports results obtained from hypergeometric test and gene set enrichment analysis.
 ```{r fig.width=12, fig.height=10}
-emapplot(ego)
+p <- emapplot(ego)
+p
+
+p + scale_color_continuous(low = "purple", high="darkgreen")
+
+## devtools::install_github("karthik/wesanderson")
+require(wesanderson)
+pal <- wes_palette("Zissou1", 100, type = "continuous")
+p + scale_color_gradientn(colors = pal)
 ```
 
 
